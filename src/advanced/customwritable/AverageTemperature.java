@@ -31,6 +31,16 @@ public class AverageTemperature {
         // criacao do job e seu nome
         Job j = new Job(c, "media");
 
+        j.setJarByClass(AverageTemperature.class);
+        j.setMapperClass(MapForAverage.class);
+        j.setReducerClass(ReduceForAverage.class);
+
+        j.setMapOutputKeyClass(Text.class);
+        j.setMapOutputValueClass(FireAvgTempWritable.class);
+        j.setOutputKeyClass(Text.class);
+        j.setOutputValueClass(FireAvgTempWritable.class);
+
+        j.waitForCompletion(false);
     }
 
 
@@ -38,6 +48,14 @@ public class AverageTemperature {
         public void map(LongWritable key, Text value, Context con)
                 throws IOException, InterruptedException {
 
+            float temp = Float.parseFloat(
+                    value.toString()
+                        .split(",")
+                        [8]
+            );
+
+            Text k = new Text("global");
+            con.write(k, new FireAvgTempWritable(temp, 1));
         }
     }
 
@@ -52,6 +70,16 @@ public class AverageTemperature {
         public void reduce(Text key, Iterable<FireAvgTempWritable> values, Context con)
                 throws IOException, InterruptedException {
 
+            float tempSum = 0;
+            int quantity = 0;
+
+            for (FireAvgTempWritable o : values) {
+                tempSum += o.gettempSum();
+                quantity += o.getN();
+            }
+
+            float average = tempSum / quantity;
+            con.write(new Text("global"), new FloatWritable(average));
         }
     }
 
